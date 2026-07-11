@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<title>Ashfall Keep</title>
+<style>
+  html, body {
+    margin: 0; padding: 0; width: 100%; height: 100%;
+    overflow: hidden; background: #000;
+    font-family: 'Georgia', serif;
+    -webkit-user-select: none; user-select: none;
+    touch-action: none;
+  }
+  #renderCanvas {
+    width: 100%; height: 100%;
+    display: block;
+    touch-action: none;
+    outline: none;
+  }
+
+  #hud {
+    position: fixed; inset: 0;
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  #loadingScreen {
+    position: fixed; inset: 0;
+    background: #05040a;
+    color: #e8c99a;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 100;
+    letter-spacing: 2px;
+  }
+  #loadingScreen h1 {
+    font-size: 28px;
+    text-shadow: 0 0 20px #ff7a2a;
+    margin-bottom: 12px;
+  }
+  #loadingScreen p {
+    font-size: 13px;
+    opacity: 0.6;
+  }
+
+  #crosshair {
+    position: absolute; top: 50%; left: 50%;
+    width: 6px; height: 6px;
+    margin: -3px 0 0 -3px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.7);
+    box-shadow: 0 0 6px rgba(255,255,255,0.5);
+  }
+
+  #joystickZone {
+    position: absolute; left: 0; bottom: 0;
+    width: 45%; height: 55%;
+    pointer-events: auto;
+    touch-action: none;
+  }
+  #joystickBase {
+    position: absolute;
+    width: 100px; height: 100px;
+    border-radius: 50%;
+    border: 2px solid rgba(232,201,154,0.4);
+    background: rgba(232,201,154,0.08);
+    display: none;
+  }
+  #joystickThumb {
+    position: absolute;
+    width: 46px; height: 46px;
+    border-radius: 50%;
+    background: rgba(255,138,60,0.55);
+    box-shadow: 0 0 12px rgba(255,120,40,0.6);
+    left: 27px; top: 27px;
+    display: none;
+  }
+
+  #lookZone {
+    position: absolute; right: 0; bottom: 0;
+    width: 55%; height: 55%;
+    pointer-events: auto;
+    touch-action: none;
+  }
+
+  #actionBtn {
+    position: absolute; right: 30px; bottom: 34%;
+    width: 76px; height: 76px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #ff9d4d, #b3450f 70%);
+    border: 2px solid rgba(255,220,180,0.6);
+    box-shadow: 0 0 18px rgba(255,110,30,0.5);
+    pointer-events: auto;
+    touch-action: none;
+    display: none;
+    align-items: center; justify-content: center;
+    color: #2a1400; font-weight: bold; font-size: 12px;
+    letter-spacing: 1px;
+  }
+
+  #pcHint {
+    position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+    color: rgba(232,201,154,0.55);
+    font-size: 12px;
+    letter-spacing: 1px;
+    text-align: center;
+    pointer-events: none;
+  }
+
+  #fireMeter {
+    position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+    color: #ffd9a0;
+    font-size: 13px;
+    letter-spacing: 2px;
+    text-shadow: 0 0 8px rgba(255,120,30,0.8);
+    pointer-events: none;
+    text-align: center;
+  }
+  #fireBarOuter {
+    width: 160px; height: 8px;
+    border: 1px solid rgba(255,200,140,0.5);
+    margin: 6px auto 0;
+    background: rgba(0,0,0,0.4);
+  }
+  #fireBarInner {
+    height: 100%;
+    width: 100%;
+    background: linear-gradient(90deg, #ff5a1a, #ffce6b);
+    transition: width 0.25s ease-out;
+  }
+
+  #healthWrap {
+    position: absolute; left: 20px; bottom: 20px;
+    color: #ffdede;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-shadow: 0 0 6px rgba(200,0,0,0.6);
+  }
+  #healthBarOuter {
+    width: 140px; height: 10px;
+    border: 1px solid rgba(255,180,180,0.5);
+    background: rgba(0,0,0,0.4);
+    margin-top: 3px;
+  }
+  #healthBarInner {
+    height: 100%; width: 100%;
+    background: linear-gradient(90deg, #7a0d0d, #d43b3b);
+    transition: width 0.2s ease-out;
+  }
+
+  #waveBanner {
+    position: absolute; top: 40%; left: 50%;
+    transform: translate(-50%, -50%);
+    color: #ffdba0;
+    font-size: 30px;
+    letter-spacing: 6px;
+    text-shadow: 0 0 24px rgba(255,120,30,0.9);
+    opacity: 0;
+    transition: opacity 0.6s ease;
+    text-align: center;
+  }
+  #waveSub {
+    font-size: 13px;
+    letter-spacing: 3px;
+    opacity: 0.7;
+    margin-top: 8px;
+  }
+
+  #damageFlash {
+    position: fixed; inset: 0;
+    background: radial-gradient(ellipse at center, rgba(200,0,0,0) 40%, rgba(160,0,0,0.55) 100%);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 15;
+  }
+
+  #gameOverScreen {
+    position: fixed; inset: 0;
+    background: rgba(2,1,4,0.92);
+    color: #e8c99a;
+    display: none;
+    flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 50;
+    letter-spacing: 2px;
+    text-align: center;
+  }
+  #gameOverScreen h1 { font-size: 26px; text-shadow: 0 0 18px #ff5a1a; }
+  #restartBtn {
+    margin-top: 20px;
+    pointer-events: auto;
+    padding: 12px 28px;
+    background: rgba(255,138,60,0.2);
+    border: 1px solid rgba(255,180,120,0.6);
+    color: #ffd9a0;
+    font-size: 14px;
+    letter-spacing: 2px;
+    border-radius: 4px;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="renderCanvas"></canvas>
+
+<div id="loadingScreen">
+  <h1>ASHFALL KEEP</h1>
+  <p id="loadingText">kindling the fire...</p>
+</div>
+
+<div id="damageFlash"></div>
+
+<div id="hud">
+  <div id="crosshair"></div>
+
+  <div id="fireMeter">
+    THE FIRE
+    <div id="fireBarOuter"><div id="fireBarInner"></div></div>
+  </div>
+
+  <div id="healthWrap">
+    VITALITY
+    <div id="healthBarOuter"><div id="healthBarInner"></div></div>
+  </div>
+
+  <div id="waveBanner">
+    <div id="waveTitle">WAVE 1</div>
+    <div id="waveSub">they come from the fog</div>
+  </div>
+
+  <div id="pcHint">WASD move · Mouse look (click to lock) · Space/Click = attack</div>
+
+  <div id="joystickZone">
+    <div id="joystickBase"><div id="joystickThumb"></div></div>
+  </div>
+  <div id="lookZone"></div>
+  <div id="actionBtn">ATK</div>
+</div>
+
+<div id="gameOverScreen">
+  <h1>THE FIRE DIES</h1>
+  <p id="gameOverStats">You held for 0 waves.</p>
+  <button id="restartBtn" onclick="location.reload()">REKINDLE</button>
+</div>
+
+<!-- Babylon.js CDN — pinned versions, do not silently upgrade across turns -->
+<script src="https://cdn.babylonjs.com/v7.35.0/babylon.js"></script>
+<script src="https://cdn.babylonjs.com/v7.35.0/babylonjs.loaders.min.js"></script>
+<script src="https://cdn.babylonjs.com/v7.35.0/babylonjs.gui.min.js"></script>
+
+<script src="input.js"></script>
+<script src="player.js"></script>
+<script src="enemy.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

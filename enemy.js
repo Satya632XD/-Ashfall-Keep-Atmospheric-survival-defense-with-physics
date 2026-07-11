@@ -1,7 +1,3 @@
-// ==========================================================================
-// enemy.js — Wraith enemy AI + WaveManager
-// ==========================================================================
-
 class Wraith {
   constructor(scene, shadowGen, wraithMat, spawnPos, braziers) {
     this.scene = scene;
